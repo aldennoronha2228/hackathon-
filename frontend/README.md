@@ -1,16 +1,60 @@
-# React + Vite
+# HardCode — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite 8 frontend for the **HardCode** AI-powered hardware project design platform.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| React | 19 | UI framework |
+| Vite | 8 | Build tool & dev server |
+| Tailwind CSS | 4 | Utility-first styling |
+| Framer Motion | 12 | Animations & transitions |
+| Zustand | 5 | State management |
+| React Router | 7 | Client-side routing |
+| Axios | 1.x | HTTP client |
+| React Hot Toast | 2.x | Notifications |
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+App runs at **http://localhost:5173**. Backend must be running at `http://localhost:5000`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Pages
+
+| Page | Route | Description |
+|------|-------|-------------|
+| `HeroPage` | `/` | Landing page with 3D tilt feature cards |
+| `AuthPage` | `/auth` | Login & signup |
+| `HomePage` | `/home` | Project dashboard (create, rename, delete) |
+| `ProjectMainPage` | `/project/:id` | Ideation + Components chat tabs |
+| `DesignPage` | `/project/:id/design` | Design chat + Wokwi Proof Lab |
+
+## Components
+
+| Component | Description |
+|-----------|-------------|
+| `ProjectChat` | Ideation phase chat with AI suggestion chips |
+| `ComponentsChat` | Components phase chat with AI suggestion chips |
+| `DesignChat` | Design phase chat with AI suggestion chips |
+| `WokwiProofLab` | Live Wokwi simulation panel (lint, run, scenario, serial, MCP) |
+
+## State Management (Zustand)
+
+| Store | File | Description |
+|-------|------|-------------|
+| Auth | `useAuthStore.js` | Current user, login/logout actions |
+| Theme | `useThemeStore.js` | Dark/light theme persistence |
+
+## Scripts
+
+```bash
+npm run dev      # Start dev server (http://localhost:5173)
+npm run build    # Production build
+npm run preview  # Preview production build
+npm run lint     # ESLint check
+```
