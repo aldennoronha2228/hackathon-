@@ -11,6 +11,11 @@ export const initializeFirebase = () => {
       process.exit(1);
     }
 
+    // dotenv stores \n as literal two-char sequences; convert them to real newlines
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+    }
+
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });

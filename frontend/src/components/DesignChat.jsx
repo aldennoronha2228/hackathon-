@@ -2,6 +2,14 @@ import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useThemeStore } from "../store/useThemeStore";
 
+const SUGGESTIONS = [
+  "Suggest a UI layout for my project 🖥️",
+  "What color scheme fits my IoT dashboard? 🎨",
+  "Help me design the user flow 🔄",
+  "What screens do I need for this app? 📱",
+  "Recommend a design system or component library 🧩",
+];
+
 export default function DesignChat({
   project,
   wokwiContext,
@@ -22,6 +30,13 @@ export default function DesignChat({
     }
   }, [messages, loading]);
 
+  const handleSuggestion = (text) => {
+    setInput(text);
+    setTimeout(() => onSend(text), 0);
+  };
+
+  const isEmpty = messages.length === 0 && !loading;
+
   return (
     <div className={`flex h-full flex-col ${isDark ? "bg-[#212121] text-[#e5e5e5]" : "bg-[#f5f5f5] text-[#111]"}`}>
       <div className={`border-b px-4 py-2 ${isDark ? "border-white/10" : "border-black/10"}`}>
@@ -36,7 +51,6 @@ export default function DesignChat({
                 : `Live circuit disconnected: ${wokwiContext?.reason || "No context"}`}
             </p>
           </div>
-
           <button
             onClick={onDebug}
             disabled={loading}
@@ -48,6 +62,43 @@ export default function DesignChat({
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+
+        {/* Suggestion chips — only when no messages yet */}
+        <AnimatePresence>
+          {isEmpty && (
+            <motion.div
+              key="suggestions"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col gap-3 py-4"
+            >
+              <p className={`text-[11px] font-semibold tracking-widest uppercase ${isDark ? "text-[#555]" : "text-[#bbb]"}`}>
+                Try a suggestion
+              </p>
+              <div className="flex flex-col gap-2">
+                {SUGGESTIONS.map((s, i) => (
+                  <motion.button
+                    key={i}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.07, duration: 0.22 }}
+                    onClick={() => handleSuggestion(s)}
+                    className={`w-full text-left rounded-xl px-4 py-3 text-sm border transition-all duration-150 ${
+                      isDark
+                        ? "bg-[#2a2a2a] border-white/10 text-[#ccc] hover:bg-[#333] hover:border-white/25 hover:text-white"
+                        : "bg-white border-black/10 text-[#333] hover:bg-[#f0f0f0] hover:border-black/20 hover:text-black"
+                    }`}
+                  >
+                    {s}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
           {messages.map((message, index) => (
             <motion.div

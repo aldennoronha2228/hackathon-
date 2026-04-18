@@ -65,32 +65,49 @@ export const findProjectById = async (projectId) => {
 
 /**
  * Find all projects belonging to a user, sorted by createdAt descending.
+ * Sorts in-memory to avoid requiring a composite Firestore index.
  */
 export const findProjectsByOwner = async (ownerId) => {
   const snapshot = await projectsRef()
     .where("owner", "==", ownerId)
-    .orderBy("createdAt", "desc")
     .get();
 
-  return snapshot.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
+  return snapshot.docs
+    .map((doc) => ({ _id: doc.id, ...doc.data() }))
+    .sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? new Date(a.createdAt).getTime();
+      const bTime = b.createdAt?.toMillis?.() ?? new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    });
 };
 
 /**
  * Find a recent project with the same owner + description (for dedup).
+ * Filters description and createdAt in-memory to avoid composite index requirement.
  */
 export const findRecentDuplicate = async (ownerId, description, withinMs = 60000) => {
-  const cutoff = new Date(Date.now() - withinMs);
+  const cutoff = Date.now() - withinMs;
+
+  // Only filter by owner in Firestore — no composite index needed
   const snapshot = await projectsRef()
     .where("owner", "==", ownerId)
-    .where("description", "==", description)
-    .where("createdAt", ">=", cutoff)
-    .orderBy("createdAt", "desc")
-    .limit(1)
     .get();
 
   if (snapshot.empty) return null;
-  const doc = snapshot.docs[0];
-  return { _id: doc.id, ...doc.data() };
+
+  const match = snapshot.docs
+    .map((doc) => ({ _id: doc.id, ...doc.data() }))
+    .filter((p) => {
+      const docTime = p.createdAt?.toMillis?.() ?? new Date(p.createdAt).getTime();
+      return p.description === description && docTime >= cutoff;
+    })
+    .sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? new Date(a.createdAt).getTime();
+      const bTime = b.createdAt?.toMillis?.() ?? new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    })[0];
+
+  return match ?? null;
 };
 
 /**
