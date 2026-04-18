@@ -118,7 +118,74 @@ export default function ComponentsChat() {
                 <div className={`mb-2 text-[11px] font-medium ${isDark ? "text-[#888]" : "text-[#666]"}`}>
                   {m.role === "user" ? "You" : "Assistant"}
                 </div>
-                <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.content}</div>
+                <div className="text-sm leading-relaxed">
+                  {(() => {
+                    if (m.role !== "ai") return <div className="whitespace-pre-wrap">{m.content}</div>;
+                    
+                    const text = (m.content || "").trim();
+                    if (text.startsWith("{")) {
+                      const elements = [];
+
+                      const archMatch = text.match(/"architecture"\s*:\s*"([^"]+)"/i);
+                      if (archMatch) {
+                        elements.push(
+                          <div key="arch" className="mb-4">
+                            <h3 className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>🏗️ Architecture</h3>
+                            <div className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#2a2a2a] border-white/5' : 'bg-gray-50 border-black/5'}`}>
+                              {archMatch[1]}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const compSection = text.match(/"components"\s*:\s*\[([\s\S]*?)\]/i);
+                      if (compSection) {
+                        const partsRegex = /{[^}]*}/g;
+                        const parts = compSection[1].match(partsRegex) || [];
+                        if (parts.length > 0) {
+                          elements.push(
+                            <div key="comp" className="mb-4">
+                              <h3 className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>📦 Components List</h3>
+                              <ul className="space-y-2">
+                                {parts.map((partText, idx) => {
+                                  const name = (partText.match(/"name"\s*:\s*"([^"]+)"/i) || [])[1] || "Part";
+                                  const type = (partText.match(/"type"\s*:\s*"([^"]+)"/i) || [])[1] || "Component";
+                                  const desc = (partText.match(/"description"\s*:\s*"([^"]+)"/i) || [])[1] || "";
+                                  return (
+                                    <li key={idx} className={`flex flex-col p-3 rounded-lg border border-l-4 ${isDark ? 'bg-[#2a2a2a] border-white/5 border-l-emerald-500' : 'bg-gray-50 border-black/5 border-l-emerald-500'}`}>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="font-semibold">{name}</span>
+                                        <span className={`text-[10px] uppercase font-bold tracking-widest ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{type}</span>
+                                      </div>
+                                      {desc && <span className={`text-xs mt-1 ${isDark ? 'text-[#888]' : 'text-gray-600'}`}>{desc}</span>}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          );
+                        }
+                      }
+
+                      const replyMatch = text.match(/"reply"\s*:\s*"([\s\S]*?)"\s*\}/i) || text.match(/"reply"\s*:\s*"([\s\S]*)/i);
+                      if (replyMatch) {
+                        let replyText = replyMatch[1].replace(/\\n/g, "\n").replace(/"$/, "").trim();
+                        elements.push(
+                          <div key="reply" className="mb-2">
+                            <h3 className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>🛠️ Implementation</h3>
+                            <div className="whitespace-pre-wrap pl-2 border-l-2 border-orange-500/30">
+                              {replyText}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (elements.length > 0) return <div>{elements}</div>;
+                    }
+
+                    return <div className="whitespace-pre-wrap">{m.content}</div>;
+                  })()}
+                </div>
               </div>
             </motion.div>
           ))}

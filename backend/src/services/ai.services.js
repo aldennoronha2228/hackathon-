@@ -525,6 +525,44 @@ const normalizeComponentsOutput = (raw, fallbackReply = "I generated components 
     reply = fallbackReply;
   }
 
+  // Combine structured state into a readable Markdown string for the chat UI
+  let readableContext = "";
+  if (architecture) {
+    readableContext += `### 🏗️ Architecture: ${architecture}\n\n`;
+  }
+  
+  if (components.length > 0) {
+    readableContext += `#### 📦 Components List\n`;
+    components.forEach((c) => {
+      const cName = c.name || "Unknown Part";
+      const cType = c.type || "Component";
+      const cDesc = c.description || "";
+      let line = `* **${cName}**`;
+      if (cType && cType !== "Component") line += ` *(${cType})*`;
+      if (cDesc) line += ` – ${cDesc}`;
+      readableContext += `${line}\n`;
+    });
+    readableContext += `\n`;
+  }
+  
+  if (apiEndpoints.length > 0) {
+    readableContext += `#### 🌐 API Endpoints\n`;
+    apiEndpoints.forEach(ep => {
+      if (typeof ep === 'string') {
+        readableContext += `* ${ep}\n`;
+      } else {
+        const info = [ep.name, ep.description].filter(Boolean).join(" – ");
+        readableContext += `* ${info}\n`;
+      }
+    });
+    readableContext += `\n`;
+  }
+
+  // Prepend the formatted context so the user sees it cleanly
+  if (readableContext && typeof raw === "object" && Object.keys(raw).length > 0) {
+    reply = `${readableContext}#### 🛠️ Implementation Details\n${reply}`;
+  }
+
   return {
     architecture,
     components,
