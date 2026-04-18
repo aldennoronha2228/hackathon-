@@ -171,11 +171,28 @@ export default function ComponentsChat() {
                       if (replyMatch) {
                         let replyText = replyMatch[1].replace(/\\n/g, "\n").replace(/"$/, "").trim();
                         elements.push(
-                          <div key="reply" className="mb-2">
+                          <div key="reply" className="mb-4">
                             <h3 className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>🛠️ Implementation</h3>
                             <div className="whitespace-pre-wrap pl-2 border-l-2 border-orange-500/30">
                               {replyText}
                             </div>
+                          </div>
+                        );
+                      }
+
+                      const asciiMatch = text.match(/"asciiDiagram"\s*:\s*"([\s\S]*?)"/i);
+                      if (asciiMatch) {
+                        let asciiText = asciiMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+                        elements.push(
+                          <div key="ascii" className="mb-4 overflow-hidden rounded-xl bg-black border border-white/10">
+                             <div className="bg-[#111] border-b border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[#888]">
+                               📝 ASCII Circuit Map
+                             </div>
+                             <div className="overflow-x-auto p-4">
+                               <pre className="text-xs font-mono text-[#0f0] whitespace-pre">
+                                 {asciiText}
+                               </pre>
+                             </div>
                           </div>
                         );
                       }

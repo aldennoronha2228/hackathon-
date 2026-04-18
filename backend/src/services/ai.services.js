@@ -300,6 +300,7 @@ RULES:
 - In reply, include two labeled sections:
   1) "Connections" (what connects to what)
   2) "Expected output" (what user sees/gets after connection)
+- Include an "asciiDiagram" field containing a plain-text ASCII art diagram showing the wiring connections between the components (e.g., [ComponentA] ---> [ComponentB]). Use '\\n' for newlines in the string.
 - Treat WOKWI RUNNER EVIDENCE as hard evidence from previous simulation/lint runs.
 - If evidence conflicts with assumptions, prefer evidence.
 - If lint/run/scenario reports failures, mention the critical failure in reply and provide corrective wiring/build steps.
@@ -310,7 +311,8 @@ OUTPUT STRICT JSON:
   "architecture": "",
   "components": [],
   "apiEndpoints": [],
-  "reply": ""
+  "reply": "",
+  "asciiDiagram": ""
 }
 
 IDEA STATE:
