@@ -1,5 +1,11 @@
-import mongoose from "mongoose";
-import Project from "../models/project.model.js";
+import {
+  createProject as createProjectDoc,
+  findProjectById,
+  findProjectsByOwner,
+  updateProject as updateProjectDoc,
+  deleteProject as deleteProjectDoc,
+  saveProject,
+} from "../models/project.model.js";
 import { processInput } from "../services/ai.services.js";
 
 const isIdeaFinalized = (project) => {
@@ -13,21 +19,20 @@ export const createProject = async (req, res) => {
   try {
     const { description } = req.body;
 
-    // 🔥 require user
     if (!req.user?._id) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const project = await Project.create({
+    const project = await createProjectDoc({
       description,
-      owner: req.user._id, // ✅ FIXED
+      owner: req.user._id,
       messages: [{ role: "user", content: description }],
       ideaState: {
         summary: "",
         requirements: [],
-        unknowns: []
+        unknowns: [],
       },
-      meta: { stage: "idea" }
+      meta: { stage: "idea" },
     });
 
     const ai = await processInput(project, description);
@@ -35,24 +40,23 @@ export const createProject = async (req, res) => {
     project.ideaState = {
       summary: ai.summary,
       requirements: ai.requirements,
-      unknowns: ai.unknowns
+      unknowns: ai.unknowns,
     };
 
     project.meta.stage = isIdeaFinalized(project) ? "components" : "idea";
 
     project.messages.push({
       role: "ai",
-      content: ai.question
+      content: ai.question,
     });
 
-    await project.save();
+    await saveProject(project);
 
     res.json({
       projectId: project._id,
       reply: ai.question,
-      ideaState: project.ideaState
+      ideaState: project.ideaState,
     });
-
   } catch (err) {
     console.error("PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });
@@ -61,9 +65,7 @@ export const createProject = async (req, res) => {
 
 export const getUserProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ owner: req.user._id })
-      .sort({ createdAt: -1 });
-
+    const projects = await findProjectsByOwner(req.user._id);
     res.json(projects);
   } catch (err) {
     console.error("GET PROJECTS ERROR:", err);
@@ -75,17 +77,13 @@ export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(id);
+    const project = await findProjectById(id);
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
@@ -100,17 +98,13 @@ export const getIdeationHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(id).select("owner messages");
+    const project = await findProjectById(id);
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
@@ -125,17 +119,13 @@ export const getComponentsHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(id).select("owner componentsMessages");
+    const project = await findProjectById(id);
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
@@ -151,17 +141,13 @@ export const updateProject = async (req, res) => {
     const { id } = req.params;
     const { description, wokwiUrl, wokwiProjectPath } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(id);
+    const project = await findProjectById(id);
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
@@ -173,12 +159,14 @@ export const updateProject = async (req, res) => {
       return res.status(400).json({ error: "Nothing to update" });
     }
 
+    const updates = {};
+
     if (hasDescription) {
       const nextDescription = description.trim();
       if (!nextDescription) {
         return res.status(400).json({ error: "Description cannot be empty" });
       }
-      project.description = nextDescription;
+      updates.description = nextDescription;
     }
 
     if (hasWokwiUrl) {
@@ -188,16 +176,15 @@ export const updateProject = async (req, res) => {
         return res.status(400).json({ error: "Invalid Wokwi project URL" });
       }
 
-      project.wokwiUrl = nextWokwiUrl;
+      updates.wokwiUrl = nextWokwiUrl;
     }
 
     if (hasWokwiProjectPath) {
-      project.wokwiProjectPath = wokwiProjectPath.trim();
+      updates.wokwiProjectPath = wokwiProjectPath.trim();
     }
 
-    await project.save();
-
-    res.json(project);
+    const updated = await updateProjectDoc(id, updates);
+    res.json(updated);
   } catch (err) {
     console.error("UPDATE PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });
@@ -208,21 +195,17 @@ export const deleteProject = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(id);
+    const project = await findProjectById(id);
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    await project.deleteOne();
+    await deleteProjectDoc(id);
 
     res.json({ message: "Project deleted" });
   } catch (err) {
@@ -238,25 +221,19 @@ export const chatProject = async (req, res) => {
   try {
     const { projectId, message } = req.body;
 
-    // 🔥 validate id
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(projectId);
+    const project = await findProjectById(projectId);
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // 🔥 ownership check
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
     project.messages.push({
       role: "user",
-      content: message
+      content: message,
     });
 
     const ai = await processInput(project, message);
@@ -264,23 +241,22 @@ export const chatProject = async (req, res) => {
     project.ideaState = {
       summary: ai.summary,
       requirements: ai.requirements,
-      unknowns: ai.unknowns
+      unknowns: ai.unknowns,
     };
 
     project.meta.stage = isIdeaFinalized(project) ? "components" : "idea";
 
     project.messages.push({
       role: "ai",
-      content: ai.question
+      content: ai.question,
     });
 
-    await project.save();
+    await saveProject(project);
 
     res.json({
       reply: ai.question,
-      ideaState: project.ideaState
+      ideaState: project.ideaState,
     });
-
   } catch (err) {
     console.error("PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });

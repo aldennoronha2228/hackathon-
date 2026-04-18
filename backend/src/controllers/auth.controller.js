@@ -1,5 +1,5 @@
 import { generateToken } from "../lib/utils.js";
-import User from "../models/user.model.js";
+import { findUserByEmail, createUser } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
 const debugAuth = (...args) => {
@@ -19,23 +19,22 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const user = await User.findOne({ email });
+    const existingUser = await findUserByEmail(email);
 
-    if (user) return res.status(400).json({ message: "Email already exists" });
+    if (existingUser) return res.status(400).json({ message: "Email already exists" });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUser = new User({
+    const newUser = await createUser({
       fullName,
       email,
       password: hashedPassword,
     });
 
     if (newUser) {
-      await newUser.save();
       generateToken(newUser._id, res);
-      debugAuth("signup success", { userId: newUser._id.toString(), email: newUser.email });
+      debugAuth("signup success", { userId: newUser._id, email: newUser.email });
 
       res.status(201).json({
         _id: newUser._id,
@@ -55,7 +54,7 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
 
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -67,7 +66,7 @@ export const login = async (req, res) => {
     }
 
     generateToken(user._id, res);
-    debugAuth("login success", { userId: user._id.toString(), email: user.email });
+    debugAuth("login success", { userId: user._id, email: user.email });
 
     res.status(200).json({
       _id: user._id,
@@ -99,7 +98,7 @@ export const logout = (req, res) => {
 
 export const checkAuth = (req, res) => {
   try {
-    debugAuth("checkAuth success", { userId: req.user?._id?.toString() });
+    debugAuth("checkAuth success", { userId: req.user?._id });
     res.status(200).json(req.user);
   } catch (error) {
     console.log("Error in checkAuth controller", error.message);

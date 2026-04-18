@@ -1,4 +1,4 @@
-import Project from "../models/project.model.js";
+import { findProjectById, saveProject } from "../models/project.model.js";
 import { processDesign } from "../services/ai.services.js";
 import { getWokwiCircuitContext } from "../lib/wokwi-context.js";
 
@@ -17,18 +17,18 @@ export const initDesign = async (req, res) => {
   try {
     const { projectId } = req.body;
 
-    const project = await Project.findById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
     if (!canStartDesign(project)) {
       return res.status(400).json({
-        error: "Finalize Ideation AI before starting Design AI"
+        error: "Finalize Ideation AI before starting Design AI",
       });
     }
 
@@ -36,7 +36,7 @@ export const initDesign = async (req, res) => {
       project.designState = {
         screens: [],
         theme: "",
-        uxFlow: []
+        uxFlow: [],
       };
     }
 
@@ -46,30 +46,28 @@ export const initDesign = async (req, res) => {
     project.designState = {
       screens: ai.screens,
       theme: ai.theme,
-      uxFlow: ai.uxFlow
+      uxFlow: ai.uxFlow,
     };
 
     if (!project.designMessages) project.designMessages = [];
 
     project.designMessages.push({
       role: "ai",
-      content: ai.reply
+      content: ai.reply,
     });
 
-    await project.save();
+    await saveProject(project);
 
     res.json({
       reply: ai.reply,
       designState: project.designState,
-      wokwiContext
+      wokwiContext,
     });
-
   } catch (err) {
     console.error("PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
 
 /*
 CHAT LOOP - DESIGN
@@ -78,18 +76,18 @@ export const chatDesign = async (req, res) => {
   try {
     const { projectId, message } = req.body;
 
-    const project = await Project.findById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
     if (!canStartDesign(project)) {
       return res.status(400).json({
-        error: "Finalize Ideation AI before starting Design AI"
+        error: "Finalize Ideation AI before starting Design AI",
       });
     }
 
@@ -97,7 +95,7 @@ export const chatDesign = async (req, res) => {
 
     project.designMessages.push({
       role: "user",
-      content: message
+      content: message,
     });
 
     const wokwiContext = await getWokwiCircuitContext(project.wokwiUrl);
@@ -106,22 +104,21 @@ export const chatDesign = async (req, res) => {
     project.designState = {
       screens: ai.screens,
       theme: ai.theme,
-      uxFlow: ai.uxFlow
+      uxFlow: ai.uxFlow,
     };
 
     project.designMessages.push({
       role: "ai",
-      content: ai.reply
+      content: ai.reply,
     });
 
-    await project.save();
+    await saveProject(project);
 
     res.json({
       reply: ai.reply,
       designState: project.designState,
-      wokwiContext
+      wokwiContext,
     });
-
   } catch (err) {
     console.error("PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });
@@ -132,12 +129,12 @@ export const getDesignContext = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 

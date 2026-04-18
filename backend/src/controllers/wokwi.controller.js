@@ -1,29 +1,24 @@
-import mongoose from "mongoose";
-import Project from "../models/project.model.js";
+import { findProjectById, saveProject } from "../models/project.model.js";
 import {
   lintWokwiProject,
   runWokwiProject,
   runWokwiScenario,
-  captureWokwiSerial
+  captureWokwiSerial,
 } from "../services/wokwi-runner.service.js";
 import {
   startWokwiMcpSession,
   listWokwiMcpSessions,
   callWokwiMcpTool,
-  stopWokwiMcpSession
+  stopWokwiMcpSession,
 } from "../services/wokwi-mcp-client.service.js";
 
 const ensureProjectAccess = async (projectId, userId) => {
-  if (!mongoose.Types.ObjectId.isValid(projectId)) {
-    return { error: { status: 400, payload: { error: "Invalid projectId" } } };
-  }
-
-  const project = await Project.findById(projectId);
+  const project = await findProjectById(projectId);
   if (!project) {
     return { error: { status: 404, payload: { error: "Project not found" } } };
   }
 
-  if (project.owner.toString() !== userId.toString()) {
+  if (project.owner !== userId) {
     return { error: { status: 403, payload: { error: "Forbidden" } } };
   }
 
@@ -37,13 +32,13 @@ const saveEvidence = async (project, key, value) => {
       lastRun: null,
       lastScenario: null,
       lastSerialCapture: null,
-      updatedAt: null
+      updatedAt: null,
     };
   }
 
   project.wokwiEvidence[key] = value;
   project.wokwiEvidence.updatedAt = new Date();
-  await project.save();
+  await saveProject(project);
 };
 
 export const lintProjectWokwi = async (req, res) => {
@@ -60,7 +55,7 @@ export const lintProjectWokwi = async (req, res) => {
       projectPath: projectPath || project.wokwiProjectPath || "",
       diagramFile,
       wokwiUrl: wokwiUrl || project.wokwiUrl || "",
-      timeoutMs
+      timeoutMs,
     });
 
     await saveEvidence(project, "lastLint", result);
@@ -68,7 +63,7 @@ export const lintProjectWokwi = async (req, res) => {
     res.json({
       projectId,
       evidenceType: "lint",
-      result
+      result,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Failed to lint Wokwi project" });
@@ -87,7 +82,7 @@ export const runProjectWokwi = async (req, res) => {
       screenshotPart = "",
       screenshotTime,
       screenshotFile = "",
-      vcdFile = ""
+      vcdFile = "",
     } = req.body;
 
     const access = await ensureProjectAccess(projectId, req.user._id);
@@ -105,7 +100,7 @@ export const runProjectWokwi = async (req, res) => {
       screenshotPart,
       screenshotTime,
       screenshotFile,
-      vcdFile
+      vcdFile,
     });
 
     await saveEvidence(project, "lastRun", result);
@@ -113,7 +108,7 @@ export const runProjectWokwi = async (req, res) => {
     res.json({
       projectId,
       evidenceType: "run",
-      result
+      result,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Failed to run Wokwi project" });
@@ -133,7 +128,7 @@ export const runScenarioWokwi = async (req, res) => {
       screenshotPart = "",
       screenshotTime,
       screenshotFile = "",
-      vcdFile = ""
+      vcdFile = "",
     } = req.body;
 
     if (!scenarioPath) {
@@ -156,7 +151,7 @@ export const runScenarioWokwi = async (req, res) => {
       screenshotPart,
       screenshotTime,
       screenshotFile,
-      vcdFile
+      vcdFile,
     });
 
     await saveEvidence(project, "lastScenario", result);
@@ -164,7 +159,7 @@ export const runScenarioWokwi = async (req, res) => {
     res.json({
       projectId,
       evidenceType: "scenario",
-      result
+      result,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Failed to run Wokwi scenario" });
@@ -183,7 +178,7 @@ export const captureSerialWokwi = async (req, res) => {
     const project = access.project;
     const result = await captureWokwiSerial({
       projectPath: projectPath || project.wokwiProjectPath || "",
-      timeoutMs
+      timeoutMs,
     });
 
     await saveEvidence(project, "lastSerialCapture", result);
@@ -191,7 +186,7 @@ export const captureSerialWokwi = async (req, res) => {
     res.json({
       projectId,
       evidenceType: "serial-capture",
-      result
+      result,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Failed to capture serial output" });
@@ -212,7 +207,7 @@ export const getWokwiEvidence = async (req, res) => {
       projectId,
       wokwiUrl: project.wokwiUrl,
       wokwiProjectPath: project.wokwiProjectPath,
-      evidence: project.wokwiEvidence || null
+      evidence: project.wokwiEvidence || null,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Failed to fetch Wokwi evidence" });
@@ -236,12 +231,12 @@ export const startInteractiveMcpSession = async (req, res) => {
 
     const session = await startWokwiMcpSession({
       projectPath: resolvedPath,
-      quiet
+      quiet,
     });
 
     res.json({
       mode: "interactive",
-      session
+      session,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Failed to start MCP session" });

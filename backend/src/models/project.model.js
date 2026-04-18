@@ -1,233 +1,133 @@
-import mongoose from "mongoose";
+import { getDB } from "../lib/db.js";
 
-const messageSchema = new mongoose.Schema({
-  role: {
-    type: String,
-    enum: ["user", "ai"],
-    required: true
-  },
-  content: {
-    type: String,
-    required: true
-  }
-}, { _id: false });
+const COLLECTION = "projects";
 
-const ideaStateSchema = new mongoose.Schema({
-  summary: {
-    type: String,
-    default: ""
-  },
-  requirements: {
-    type: [String],
-    default: []
-  },
-  unknowns: {
-    type: [String],
-    default: []
-  }
-}, { _id: false });
+const projectsRef = () => getDB().collection(COLLECTION);
 
-// COMPONENTS
-const componentsStateSchema = new mongoose.Schema({
-  architecture: {
-    type: String,
-    default: ""
-  },
-  components: {
-    type: [String],
-    default: []
-  },
-  apiEndpoints: {
-    type: [String],
-    default: []
-  }
-}, { _id: false });
-
-// DESIGN
-const designScreenSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    default: ""
-  },
-  elements: {
-    type: [String],
-    default: []
-  },
-  actions: {
-    type: [String],
-    default: []
-  }
-}, { _id: false });
-
-const designStateSchema = new mongoose.Schema({
-  screens: {
-    type: [designScreenSchema],
-    default: []
-  },
-  theme: {
-    type: String,
-    default: ""
-  },
-  uxFlow: {
-    type: [String],
-    default: []
-  }
-}, { _id: false });
-
-const wokwiEvidenceResultSchema = new mongoose.Schema({
-  ok: {
-    type: Boolean,
-    default: false
-  },
-  command: {
-    type: String,
-    default: ""
-  },
-  exitCode: {
-    type: Number,
-    default: 0
-  },
-  durationMs: {
-    type: Number,
-    default: 0
-  },
-  stdoutTail: {
-    type: String,
-    default: ""
-  },
-  stderrTail: {
-    type: String,
-    default: ""
-  },
-  serialTail: {
-    type: String,
-    default: ""
-  },
-  summary: {
-    type: String,
-    default: ""
-  },
-  metadata: {
-    type: mongoose.Schema.Types.Mixed,
-    default: () => ({})
-  },
-  ranAt: {
-    type: Date,
-    default: Date.now
-  }
-}, { _id: false });
-
-const wokwiEvidenceSchema = new mongoose.Schema({
-  lastLint: {
-    type: wokwiEvidenceResultSchema,
-    default: null
-  },
-  lastRun: {
-    type: wokwiEvidenceResultSchema,
-    default: null
-  },
-  lastScenario: {
-    type: wokwiEvidenceResultSchema,
-    default: null
-  },
-  lastSerialCapture: {
-    type: wokwiEvidenceResultSchema,
-    default: null
-  },
-  updatedAt: {
-    type: Date,
-    default: null
-  }
-}, { _id: false });
-
-const projectSchema = new mongoose.Schema({
-
-  // 🔥 REQUIRED: USER LINK
-  owner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
-  },
-
-  description: {
-    type: String,
-    required: true
-  },
-
-  wokwiUrl: {
-    type: String,
-    default: ""
-  },
-
-  wokwiProjectPath: {
-    type: String,
-    default: ""
-  },
-
-  // IDEATION
-  messages: {
-    type: [messageSchema],
-    default: []
-  },
-
+/**
+ * Default structure for a new project document.
+ */
+const defaultProject = (overrides = {}) => ({
+  owner: "",
+  description: "",
+  wokwiUrl: "",
+  wokwiProjectPath: "",
+  messages: [],
   ideaState: {
-    type: ideaStateSchema,
-    default: () => ({
-      summary: "",
-      requirements: [],
-      unknowns: []
-    })
+    summary: "",
+    requirements: [],
+    unknowns: [],
   },
-
-  // COMPONENTS
-  componentsMessages: {
-    type: [messageSchema],
-    default: []
-  },
-
+  componentsMessages: [],
   componentsState: {
-    type: componentsStateSchema,
-    default: () => ({
-      architecture: "",
-      components: [],
-      apiEndpoints: []
-    })
+    architecture: "",
+    components: [],
+    apiEndpoints: [],
   },
-
-  // DESIGN
-  designMessages: {
-    type: [messageSchema],
-    default: []
-  },
-
+  designMessages: [],
   designState: {
-    type: designStateSchema,
-    default: () => ({
-      screens: [],
-      theme: "",
-      uxFlow: []
-    })
+    screens: [],
+    theme: "",
+    uxFlow: [],
   },
-
   wokwiEvidence: {
-    type: wokwiEvidenceSchema,
-    default: () => ({
-      lastLint: null,
-      lastRun: null,
-      lastScenario: null,
-      lastSerialCapture: null,
-      updatedAt: null
-    })
+    lastLint: null,
+    lastRun: null,
+    lastScenario: null,
+    lastSerialCapture: null,
+    updatedAt: null,
   },
-
   meta: {
-    stage: {
-      type: String,
-      enum: ["idea", "components", "design", "build"],
-      default: "idea"
-    }
-  }
+    stage: "idea",
+  },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
 
-}, { timestamps: true });
+/**
+ * Create a new project document.
+ */
+export const createProject = async (data) => {
+  const doc = defaultProject(data);
+  const docRef = await projectsRef().add(doc);
+  return { _id: docRef.id, ...doc };
+};
 
-export default mongoose.model("Project", projectSchema);
+/**
+ * Find a project by its Firestore document ID.
+ */
+export const findProjectById = async (projectId) => {
+  const doc = await projectsRef().doc(projectId).get();
+  if (!doc.exists) return null;
+  return { _id: doc.id, ...doc.data() };
+};
+
+/**
+ * Find all projects belonging to a user, sorted by createdAt descending.
+ */
+export const findProjectsByOwner = async (ownerId) => {
+  const snapshot = await projectsRef()
+    .where("owner", "==", ownerId)
+    .orderBy("createdAt", "desc")
+    .get();
+
+  return snapshot.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
+};
+
+/**
+ * Find a recent project with the same owner + description (for dedup).
+ */
+export const findRecentDuplicate = async (ownerId, description, withinMs = 60000) => {
+  const cutoff = new Date(Date.now() - withinMs);
+  const snapshot = await projectsRef()
+    .where("owner", "==", ownerId)
+    .where("description", "==", description)
+    .where("createdAt", ">=", cutoff)
+    .orderBy("createdAt", "desc")
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  return { _id: doc.id, ...doc.data() };
+};
+
+/**
+ * Update a project document (partial merge).
+ */
+export const updateProject = async (projectId, data) => {
+  const ref = projectsRef().doc(projectId);
+  await ref.update({ ...data, updatedAt: new Date() });
+
+  const updated = await ref.get();
+  return { _id: updated.id, ...updated.data() };
+};
+
+/**
+ * Save a full project object back to Firestore.
+ * Strips _id so it isn't stored as a field.
+ */
+export const saveProject = async (project) => {
+  const { _id, ...data } = project;
+  data.updatedAt = new Date();
+  await projectsRef().doc(_id).set(data, { merge: true });
+  return project;
+};
+
+/**
+ * Delete a project document.
+ */
+export const deleteProject = async (projectId) => {
+  await projectsRef().doc(projectId).delete();
+};
+
+export default {
+  createProject,
+  findProjectById,
+  findProjectsByOwner,
+  findRecentDuplicate,
+  updateProject,
+  saveProject,
+  deleteProject,
+};

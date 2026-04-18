@@ -1,4 +1,4 @@
-import Project from "../models/project.model.js";
+import { findProjectById, saveProject } from "../models/project.model.js";
 import { processComponents } from "../services/ai.services.js";
 
 const isIdeaFinalized = (project) => {
@@ -16,18 +16,18 @@ export const initComponents = async (req, res) => {
   try {
     const { projectId } = req.body;
 
-    const project = await Project.findById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
     if (!canStartComponents(project)) {
       return res.status(400).json({
-        error: "Finalize Ideation AI before starting Components AI"
+        error: "Finalize Ideation AI before starting Components AI",
       });
     }
 
@@ -36,7 +36,7 @@ export const initComponents = async (req, res) => {
       project.componentsState = {
         architecture: "",
         components: [],
-        apiEndpoints: []
+        apiEndpoints: [],
       };
     }
 
@@ -45,29 +45,27 @@ export const initComponents = async (req, res) => {
     project.componentsState = {
       architecture: ai.architecture,
       components: ai.components,
-      apiEndpoints: ai.apiEndpoints
+      apiEndpoints: ai.apiEndpoints,
     };
 
     if (!project.componentsMessages) project.componentsMessages = [];
 
     project.componentsMessages.push({
       role: "ai",
-      content: ai.reply
+      content: ai.reply,
     });
 
-    await project.save();
+    await saveProject(project);
 
     res.json({
       reply: ai.reply,
-      componentsState: project.componentsState
+      componentsState: project.componentsState,
     });
-
   } catch (err) {
     console.error("PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
 
 /*
 CHAT LOOP - COMPONENTS
@@ -76,18 +74,18 @@ export const chatComponents = async (req, res) => {
   try {
     const { projectId, message } = req.body;
 
-    const project = await Project.findById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (project.owner.toString() !== req.user._id.toString()) {
+    if (project.owner !== req.user._id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
     if (!canStartComponents(project)) {
       return res.status(400).json({
-        error: "Finalize Ideation AI before starting Components AI"
+        error: "Finalize Ideation AI before starting Components AI",
       });
     }
 
@@ -96,7 +94,7 @@ export const chatComponents = async (req, res) => {
     // store user msg
     project.componentsMessages.push({
       role: "user",
-      content: message
+      content: message,
     });
 
     const ai = await processComponents(project, message);
@@ -104,21 +102,20 @@ export const chatComponents = async (req, res) => {
     project.componentsState = {
       architecture: ai.architecture,
       components: ai.components,
-      apiEndpoints: ai.apiEndpoints
+      apiEndpoints: ai.apiEndpoints,
     };
 
     project.componentsMessages.push({
       role: "ai",
-      content: ai.reply
+      content: ai.reply,
     });
 
-    await project.save();
+    await saveProject(project);
 
     res.json({
       reply: ai.reply,
-      componentsState: project.componentsState
+      componentsState: project.componentsState,
     });
-
   } catch (err) {
     console.error("PROJECT ERROR:", err);
     res.status(500).json({ error: err.message });

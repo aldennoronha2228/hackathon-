@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import { connectDB } from "./lib/db.js";
+import { initializeFirebase } from "./lib/db.js";
 import { checkWokwiCliReady } from "./lib/wokwi.js";
 import cookieParser from "cookie-parser";
 
@@ -34,6 +34,6 @@ app.use("/api/auth", authRoutes);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
+  initializeFirebase();
   checkWokwiCliReady();
-  connectDB();
 });

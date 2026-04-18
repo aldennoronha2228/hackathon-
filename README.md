@@ -2,6 +2,7 @@
   <img src="https://img.shields.io/badge/HARDCODE-v1.0-6366f1?style=for-the-badge&labelColor=0a0c10" alt="HardCode Badge"/>
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white&labelColor=0a0c10" alt="React"/>
   <img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white&labelColor=0a0c10" alt="Express"/>
+  <img src="https://img.shields.io/badge/Firebase-Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=white&labelColor=0a0c10" alt="Firebase"/>
   <img src="https://img.shields.io/badge/Wokwi-Integrated-22C55E?style=for-the-badge&labelColor=0a0c10" alt="Wokwi"/>
   <img src="https://img.shields.io/badge/Groq_AI-Powered-F97316?style=for-the-badge&labelColor=0a0c10" alt="Groq AI"/>
 </p>
@@ -59,7 +60,7 @@
 | Technology | Purpose |
 |------------|---------|
 | **Express 5** | REST API server |
-| **MongoDB + Mongoose 9** | Database & ODM |
+| **Firebase Admin + Firestore** | Cloud database |
 | **Groq SDK** | LLM inference (AI services) |
 | **JSON Web Token** | Authentication |
 | **bcryptjs** | Password hashing |
@@ -136,7 +137,7 @@ HardCodeV1/
 ### Prerequisites
 
 - **Node.js** ≥ 18
-- **MongoDB** (local or Atlas)
+- **Firebase Project** (with Firestore enabled)
 - **Wokwi CLI** (for simulation features)
 - **Groq API Key** (for AI features)
 
@@ -158,7 +159,7 @@ Create a `.env` file in the `backend/` directory:
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/hardcode
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"your-project-id",...}
 JWT_SECRET=your_jwt_secret_here
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
